@@ -1,0 +1,4 @@
+# all .csv and .fas files
+*.csv
+*.fas
+*.fasta
