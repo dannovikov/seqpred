@@ -2,3 +2,7 @@
 *.csv
 *.fas
 *.fasta
+*.pyc
+*.out
+*.log
+*.txt

@@ -28,8 +28,8 @@ class FCNN(nn.Module):
         flat_size = N*L
         self.fc1 = nn.Linear(flat_size, flat_size//2)
         self.fc2 = nn.Linear(flat_size//2, flat_size//4)
-        self.fc3 = nn.Linear(flat_size//16, flat_size//256)
-        self.fc4 = nn.Linear(flat_size//256, L)
+        self.fc3 = nn.Linear(flat_size//4, flat_size//16)
+        self.fc4 = nn.Linear(flat_size//16, L)
         self.relu = nn.ReLU()
         self.flatten = nn.Flatten()
         self.sigmoid = nn.Sigmoid()
