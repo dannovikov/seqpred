@@ -40,10 +40,13 @@ VAL_TARGETS_PATH =   "./pickles/usa50k_val_targets.pkl"
 def main():
     print('Reading data')
     data = readData()
+
     print('Creating sorted tensors')
     train_data, test_data, val_data, *dates = createSortedTensors(data)
+
     print('Creating data loaders')
     train_loader, test_loader, val_loader = createDataLoaders(train_data, test_data, val_data)
+
     print('Training model')
     sequence_length = train_data.shape[1]
     model = FCNN(WINDOW_SIZE, sequence_length)
@@ -89,57 +92,34 @@ def createSortedTensors(data):
     return train_data, test_data, val_data, train_dates, test_dates, val_dates
 
 
+class SlidingWindowDataset(torch.utils.data.Dataset):
+    def __init__(self, data, window_size, target_size):
+        self.data = data
+        self.window_size = window_size
+        self.target_size = target_size
+
+    def __len__(self):
+        return len(self.data) - self.window_size - self.target_size
+
+    def __getitem__(self, idx):
+        window = self.data[idx:idx+self.window_size]
+        target_window = self.data[idx+self.window_size:idx+self.window_size+self.target_size]
+        consensus = get_consensus(target_window)
+        return window, consensus
+
 def createDataLoaders(train_data, test_data, val_data):
+    # Each data loader will index into the data tensor to fetch the input and target windows in real time
+    # This is done to avoid loading the entire dataset into memory at once
 
-    if not os.path.exists(TRAIN_SLIDES_PATH):
-        train_slides, train_targets = createSlidingWindowSet(train_data)
-        pickle(train_slides, TRAIN_SLIDES_PATH)
-        pickle(train_targets, TRAIN_TARGETS_PATH)
-    else:
-        train_slides = unpickle(TRAIN_SLIDES_PATH)
-        train_targets = unpickle(TRAIN_TARGETS_PATH)
-
-    if not os.path.exists(TEST_SLIDES_PATH):
-        test_slides, test_targets = createSlidingWindowSet(test_data)
-        pickle(test_slides, TEST_SLIDES_PATH)
-        pickle(test_targets, TEST_TARGETS_PATH)
-    else:
-        test_slides = unpickle(TEST_SLIDES_PATH)
-        test_targets = unpickle(TEST_TARGETS_PATH)
-
-    if not os.path.exists(VAL_SLIDES_PATH):
-        val_slides, val_targets = createSlidingWindowSet(val_data)
-        pickle(val_slides, VAL_SLIDES_PATH)
-        pickle(val_targets, VAL_TARGETS_PATH)
-    else:
-        val_slides = unpickle(VAL_SLIDES_PATH)
-        val_targets = unpickle(VAL_TARGETS_PATH)
-
-
-    train_ds = torch.utils.data.TensorDataset(train_slides, train_targets)
-    test_ds = torch.utils.data.TensorDataset(test_slides, test_targets)
-    val_ds = torch.utils.data.TensorDataset(val_slides, val_targets)
+    train_ds = SlidingWindowDataset(train_data, WINDOW_SIZE, TARGET_SIZE)
+    test_ds = SlidingWindowDataset(test_data, WINDOW_SIZE, TARGET_SIZE)
+    val_ds = SlidingWindowDataset(val_data, WINDOW_SIZE, TARGET_SIZE)
 
     train_loader = torch.utils.data.DataLoader(train_ds, batch_size=BATCH_SIZE, shuffle=True)
     test_loader = torch.utils.data.DataLoader(test_ds, batch_size=BATCH_SIZE, shuffle=True)
     val_loader = torch.utils.data.DataLoader(val_ds, batch_size=BATCH_SIZE, shuffle=True)
 
     return train_loader, test_loader, val_loader
-
-
-def createSlidingWindowSet(data):
-    slides = []
-    targets = []
-    print(len(data) - WINDOW_SIZE - TARGET_SIZE, "windows to create")
-    for i in tqdm(range(len(data) - WINDOW_SIZE - TARGET_SIZE)):
-        input_window = data[i:i+WINDOW_SIZE]
-        target_window = data[i+WINDOW_SIZE:i+WINDOW_SIZE+TARGET_SIZE]
-        target_consensus = get_consensus(target_window)
-        slides.append(input_window)
-        targets.append(target_consensus)
-        
-    return torch.stack(slides), torch.stack(targets)
-
 
 def get_consensus(target_window):
     consensus = torch.zeros(target_window.shape[1])
@@ -205,3 +185,5 @@ def unpickle(path):
 
 if __name__ == "__main__":
     main()
+
+
