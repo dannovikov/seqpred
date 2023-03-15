@@ -10,6 +10,8 @@ import numpy as np
 import os
 from matplotlib import pyplot as plt
 
+import pickle as pkl
+
 from tqdm import tqdm
 
 #data paths
@@ -177,11 +179,11 @@ def pickle(obj, path):
     if os.path.exists(path):
         return
     with open(path, "wb") as f:
-        pickle.dump(obj, f)
+        pkl.dump(obj, f)
 
 def unpickle(path):
     with open(path, "rb") as f:
-        return pickle.load(f)
+        return pkl.load(f)
 
 if __name__ == "__main__":
     main()
